@@ -201,10 +201,179 @@ SELECT TO_CHAR(SYSDATE, 'YYYY/MM/DD HH24/MI/SS DAY')FROM DUAL;
 SELECT TO_CHAR(SYSDATE, 'MM/DD (DY)') FROM DUAL;
 
 -- 2025년 3월 10일 (월)
-SELECT TO_CHAR(SYSDATE,) FROM DUAL;
+SELECT TO_CHAR(SYSDATE,'YYYY') || '년 ' || 
+TO_CHAR(SYSDATE,'MM') || '월 ' ||
+TO_CHAR(SYSDATE,'DD') || '일 ' ||
+TO_CHAR(SYSDATE,'(DY)') 날짜
+FROM DUAL;
+--> "" 쌍따옴표를 이용해서 단순한 문자로 인식시키면 해결됨
+SELECT TO_CHAR(SYSDATE, 'YYYY"년" MM"월" DD"일" (DY)') 날짜
+FROM DUAL;
+
+-------------------------------------------------------
+
+-- 날짜로 변환 TO_DATE
+
+-- TO_DATE(문자형 데이터, [포맷]) : 문자형 -> 날짜로 변경
+-- TO_DATE(숫자형 데이터, [포맷]) : 숫자형 -> 날짜로 변경
+--> 지정된 포맷으로 날짜를 인식함
+
+SELECT TO_DATE('2025-03-10') FROM DUAL; 
+-- 2025-03-10 00:00:00.000
+SELECT TO_DATE('20250310') FROM DUAL; 
+-- 2025-03-10 00:00:00.000
+
+SELECT TO_DATE('250310 140730', 'YYMMDD HH24MISS') FROM DUAL;
+--> 패턴을 적용해서 작성된 문자열의 각 문자가 어떤 날짜 형식인지 인식 시킴
+-- 2025-03-10 14:07:30.000
+
+-- Y 패턴 : 현재 세기(21세기 == 20XX년 == 2000년대)
+-- R 패턴 : 1세기 기준으로 절반(50년) 이상인 경우는 이전 세기(1900년)
+--				 					 절반(50년) 미만인 경우는 현재 세기(2000년)
+SELECT TO_DATE('800505', 'YYMMDD') FROM DUAL;
+-- 2080-05-05 00:00:00.000
+SELECT TO_DATE('800505', 'RR-MM-DD') FROM DUAL;
+-- 1980-05-05 00:00:00.000
+SELECT TO_DATE('490505', 'RRMMDD') FROM DUAL;
+-- 2049-05-05 00:00:00.000
+
+-- EMPLOYEE 테이블에서 각 직원이 태어난 생년월일 조회
+-- 사원이름, 생년월일 (1965년 10월 08일)
+SELECT EMP_NAME,
+TO_CHAR(TO_DATE(SUBSTR(EMP_NO, 1, INSTR(EMP_NO,'-')-1)),
+'YYYY"년" MM"월" DD"일"') 생년월일
+FROM EMPLOYEE;
+
+------------------------------------------------------
+
+-- 숫자 형변환
+-- TO_NUMBER(문자데이터, [포맷]) : 문자형 데이터를 숫자 데이터로 변경
+
+SELECT '1,000,000' + 500000 FROM DUAL;
+SELECT TO_NUMBER('1,000,000', '9,999,999') + 500000 
+FROM DUAL;
+
+-- NULL 처리 함수
+-- NVL(컬럼명, 컬럼값이 NULL 일 때 바꿀 값) : NULL 인 컬럼값을 다른값으로 변경
+
+-- NULL과 산술 연산을 진행하면 결과는 무조건 NULL
+SELECT EMP_NAME, SALARY, NVL(BONUS, 0), SALARY * NVL(BONUS,0) 
+FROM EMPLOYEE;
 
 
+-- NVL2(컬럼명, 바꿀값1, 바꿀값2)
+-- 해당 컬럼의 값이 있으면 바꿀값1로 변경,
+-- NULL 이면 바꿀값2 변경
 
+-- EMPLOYEE 테이블에서 보너스를 받으면 'O', 안받으면 'X' 조회
+SELECT EMP_NAME, NVL2(BONUS,'O', 'X') "보너스 수령" 
+FROM EMPLOYEE;
+
+---------------------------------------------------
+
+-- 선택 함수
+-- 여러가지 경우에 따라 알맞은 결과를 선택할 수 있음
+
+-- DECODE(계산식 | 컬럼명, 조건값1, 선택값1, 조건값2, 선택값2, 
+--                               ..., 아무것도 일치하지 않을때)
+-- 비교하고자 하는 값 또는 컬럼이 조건식과 같으면 결과 값 반환
+
+-- 직원의 성별 구하기
+SELECT EMP_NAME,
+DECODE(SUBSTR(EMP_NO, 8, 1), '1', '남성', '2','여성') 성별
+FROM EMPLOYEE;
+
+-- 직원의 급여를 인상하려고 한다
+-- 직급 코드가 J7인 직원은 20% 인상
+-- 직급 코드가 J6인 직원은 15% 인상
+-- 직급 코드가 J5인 직원은 10% 인상
+-- 그 외 직급은 5% 인상.
+-- 이름, 직급코드, 급여, 인상률, 인상된 급여를 조회
+SELECT EMP_NAME, JOB_CODE, SALARY, 
+DECODE(JOB_CODE,'J7','20%',
+								'J6', '15%',
+								'J5', '10%',
+								'5%') 인상률,
+DECODE(JOB_CODE,'J7',SALARY * 1.2,
+								'J6', SALARY * 1.15,
+								'J5', SALARY * 1.1, 
+								SALARY * 1.05) "인상된 급여"
+FROM EMPLOYEE;
+
+
+-- CASE WHEN 조건식 THEN 결과값
+--			WHEN 조건식 THEN 결과값
+--			ELSE 결과값
+-- END
+
+-- 비교하고자 하는 값 또는 컬럼이 조건식과 같으면 결과값을 반환
+-- 조건은 범위값도 가능
+
+-- EMPLOYEE 테이블에서
+-- 급여가 500만원 이상이면 '대'
+-- 급여가 300만원 이상 500만원 미만이면 '중'
+-- 급여가 300만원 미만이면 '소'
+-- 사원 이름, 급여, 급여 받는 정도 조회
+SELECT EMP_NAME 이름, SALARY 급여,
+CASE WHEN SALARY >= 5000000 THEN '대'
+		WHEN SALARY >= 3000000 THEN '중'
+		ELSE '소' END "급여 받는 정도"
+FROM EMPLOYEE;
+
+-----------------------------------------------------
+
+-- 그룹 함수
+-- 하나 이상의 행을 그룹으로 묶어 연산하여 총합, 평균 등의
+-- 하나의 결과 행으로 반환하는 함수
+
+-- SUM(숫자가 기록된 컬럼명) : 합계
+-- 모든 직원의 급여 합 조회
+SELECT '모든 직원의 급여 합은 : ' || 
+TO_CHAR(SUM(SALARY),'L999,999,999') || '원' FROM EMPLOYEE;
+
+-- AVG(숫자가 기록된 컬럼명) : 평균
+-- 전 직원 급여 평균
+SELECT '모든 직원의 급여 평균은 : ' ||
+TO_CHAR(ROUND(AVG(SALARY)),'L999,999,999')||'원' FROM EMPLOYEE;
+
+-- 부서코드가 'D9'인 사원들의 급여 합, 평균
+SELECT SUM(SALARY), AVG(SALARY) 
+FROM EMPLOYEE e 
+WHERE DEPT_CODE = 'D9';
+
+
+-- MIN(컬럼명) : 최소값
+-- MAX(컬럼명) : 최대값
+--> 타입 제한 없음(숫자 : 대/소, 날짜 : 과거/미래, 문자열 : 문자 순서)
+
+-- 급여 최소값, 가장빠른 입사일, 알파벳순서가 가장빠른 이메일 조회
+SELECT MIN(SALARY), MIN(HIRE_DATE), MIN(EMAIL)
+FROM EMPLOYEE e ;
+
+
+-- 급여 최대값, 가장 최근 입사일, 알파벳순서가 가장느린 이메일 조회
+SELECT MAX(SALARY), MAX(HIRE_DATE), MAX(EMAIL)
+FROM EMPLOYEE e ;
+
+
+-- EMPLOYEE 테이블에서
+-- 급여를 가장 많이 받는 사원의
+-- 이름, 급여, 직급코드를 조회
+SELECT EMP_NAME, SALARY, JOB_CODE
+FROM EMPLOYEE e 
+WHERE SALARY = (SELECT MAX(SALARY) FROM EMPLOYEE);
+
+-- 서브쿼리 + 그룹함수
+SELECT MAX(SALARY) FROM EMPLOYEE; 
+
+-- COUNT() : 행 개수를 헤아려서 반환
+-- COUNT(컬럼명) : NULL을 제외한 실제값이 기록된 행 개수를 리턴
+-- COUNT(*) : NULL을 포함한 전체 행 개수를 리턴
+-- COUNT([DISTINCT] 컬럼명) : 중복을 제거한 행 개수를 리턴
+
+SELECT COUNT(BONUS) FROM EMPLOYEE e ;
+SELECT COUNT(*) FROM EMPLOYEE e ;
+SELECT COUNT(DISTINCT JOB_CODE ) FROM EMPLOYEE e ;
 
 
 
