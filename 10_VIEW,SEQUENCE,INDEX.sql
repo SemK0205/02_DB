@@ -40,7 +40,7 @@
  *  5) WITH READ OLNY 옵션 :
  * 		뷰에 대해 SELECT만 가능하도록 지정.
  * */
-
+CREATE USER SAMPLE;
 /* VIEW를 생성하기 위해서는 권한이 필요하다 ! */
 
 -- (SYS 관리자 계정 접속)
